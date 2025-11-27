@@ -1,0 +1,96 @@
+datasource db {
+  provider = "mysql" 
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum OrganisationMemberRole {
+  SONGWRITER
+  MANAGER
+}
+
+// Better auth compatible User table
+model User {
+  id                      String  @id @default(cuid())
+  email                   String @unique
+  organisationMembership  OrganisationMember[]
+  //TODO: Login history
+}
+
+// Organisation with links to members and related media 
+model Organisation {
+  id          String  @id @default(cuid())
+  name        String
+  createdAt   DateTime  @default(now())
+  members     OrganisationMember[]
+  media       Media[]
+}
+
+// Pivot table to determine the role of each org member
+model OrganisationMember {
+  user          User @relation(fields: [userId], references: [id])
+  userId        String
+  organisation  Organisation @relation(fields: [orgId], references: [id])
+  orgId         String
+  role          OrganisationMemberRole
+  mediaAuthors  MediaAuthor[]
+  comments      Pitch[] @relation("MemberComments")
+  @@id([userId, orgId])
+}
+
+// Pivot table to match a songwriter to the media they authored
+model MediaAuthor {
+  media           Media @relation(fields: [mediaId], references: [id])
+  mediaId         String
+  member          OrganisationMember @relation(fields: [userId, orgId], references: [userId, orgId])
+  userId          String
+  orgId           String
+  targetedByPitch PitchTargetAuthor[] @relation("TargetedMediaAuthor")
+
+  @@id([mediaId, userId, orgId])
+}
+
+// A central media table with organisation and author ownership
+model Media {
+  id          String  @id @default(cuid())
+  title       String
+  duration    String
+  filePath    String
+  createdAt   DateTime  @default(now())
+  org         Organisation @relation(fields: [orgId], references: [id])
+  orgId       String
+  authors     MediaAuthor[]
+  pitches     Pitch[]
+}
+
+model Pitch {
+  id          String  @id @default(cuid())
+  media       Media @relation(fields: [mediaId], references: [id])
+  mediaId     String
+  commentor   OrganisationMember  @relation("MemberComments", fields: [authorUserId, authorOrgId], references: [userId, orgId])
+  authorUserId  String
+  authorOrgId   String
+  tags          PitchTags[]
+  description   String
+  targetAuthors PitchTargetAuthor[]
+}
+
+model PitchTags {
+  id          String  @id @default(cuid())
+  pitch       Pitch @relation(fields: [pitchId], references: [id])
+  pitchId     String
+  tagValue    String
+}
+
+model PitchTargetAuthor {
+  pitch Pitch @relation(fields: [pitchId], references: [id])
+  pitchId String
+  author  MediaAuthor @relation("TargetedMediaAuthor", fields: [mediaId, targetUserId, targetOrgId], references: [mediaId, userId, orgId])
+  mediaId  String
+  targetUserId String
+  targetOrgId String
+
+  @@id([pitchId, mediaId, targetUserId, targetOrgId])
+}

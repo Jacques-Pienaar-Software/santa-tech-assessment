@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: media_db
+      MYSQL_USER: media_user
+      MYSQL_PASSWORD: media_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build: .
+    depends_on:
+      - mysql
+    environment:
+      DATABASE_URL: "mysql://media_user:media_pass@mysql:3306/media_db"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  mysql_data:
