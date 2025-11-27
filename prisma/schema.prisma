@@ -1,5 +1,6 @@
+
 datasource db {
-  provider = "mysql" 
+  provider = "mysql"
   url = env("DATABASE_URL")
 }
 
@@ -13,39 +14,53 @@ enum OrganisationMemberRole {
 }
 
 // Better auth compatible User table
+
 model User {
-  id                      String  @id @default(cuid())
-  email                   String @unique
-  organisationMembership  OrganisationMember[]
+  id                     String               @id @default(cuid())
+  email                  String               @unique
+  organisationMembership OrganisationMember[]
   //TODO: Login history
+  name                   String               @db.Text
+  emailVerified          Boolean              @default(false)
+  image                  String?              @db.Text
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  sessions               Session[]
+  accounts               Account[]
+
+  @@map("user")
 }
 
 // Organisation with links to members and related media 
+
 model Organisation {
-  id          String  @id @default(cuid())
-  name        String
-  createdAt   DateTime  @default(now())
-  members     OrganisationMember[]
-  media       Media[]
+  id        String               @id @default(cuid())
+  name      String
+  createdAt DateTime             @default(now())
+  members   OrganisationMember[]
+  media     Media[]
 }
 
 // Pivot table to determine the role of each org member
+
 model OrganisationMember {
-  user          User @relation(fields: [userId], references: [id])
-  userId        String
-  organisation  Organisation @relation(fields: [orgId], references: [id])
-  orgId         String
-  role          OrganisationMemberRole
-  mediaAuthors  MediaAuthor[]
-  comments      Pitch[] @relation("MemberComments")
+  user         User                   @relation(fields: [userId], references: [id])
+  userId       String
+  organisation Organisation           @relation(fields: [orgId], references: [id])
+  orgId        String
+  role         OrganisationMemberRole
+  mediaAuthors MediaAuthor[]
+  comments     Pitch[]                @relation("MemberComments")
+
   @@id([userId, orgId])
 }
 
 // Pivot table to match a songwriter to the media they authored
+
 model MediaAuthor {
-  media           Media @relation(fields: [mediaId], references: [id])
+  media           Media               @relation(fields: [mediaId], references: [id])
   mediaId         String
-  member          OrganisationMember @relation(fields: [userId, orgId], references: [userId, orgId])
+  member          OrganisationMember  @relation(fields: [userId, orgId], references: [userId, orgId])
   userId          String
   orgId           String
   targetedByPitch PitchTargetAuthor[] @relation("TargetedMediaAuthor")
@@ -54,23 +69,24 @@ model MediaAuthor {
 }
 
 // A central media table with organisation and author ownership
+
 model Media {
-  id          String  @id @default(cuid())
-  title       String
-  duration    String
-  filePath    String
-  createdAt   DateTime  @default(now())
-  org         Organisation @relation(fields: [orgId], references: [id])
-  orgId       String
-  authors     MediaAuthor[]
-  pitches     Pitch[]
+  id        String        @id @default(cuid())
+  title     String
+  duration  String
+  filePath  String
+  createdAt DateTime      @default(now())
+  org       Organisation  @relation(fields: [orgId], references: [id])
+  orgId     String
+  authors   MediaAuthor[]
+  pitches   Pitch[]
 }
 
 model Pitch {
-  id          String  @id @default(cuid())
-  media       Media @relation(fields: [mediaId], references: [id])
-  mediaId     String
-  commentor   OrganisationMember  @relation("MemberComments", fields: [authorUserId, authorOrgId], references: [userId, orgId])
+  id            String              @id @default(cuid())
+  media         Media               @relation(fields: [mediaId], references: [id])
+  mediaId       String
+  commentor     OrganisationMember  @relation("MemberComments", fields: [authorUserId, authorOrgId], references: [userId, orgId])
   authorUserId  String
   authorOrgId   String
   tags          PitchTags[]
@@ -79,19 +95,67 @@ model Pitch {
 }
 
 model PitchTags {
-  id          String  @id @default(cuid())
-  pitch       Pitch @relation(fields: [pitchId], references: [id])
-  pitchId     String
-  tagValue    String
+  id       String @id @default(cuid())
+  pitch    Pitch  @relation(fields: [pitchId], references: [id])
+  pitchId  String
+  tagValue String
 }
 
 model PitchTargetAuthor {
-  pitch Pitch @relation(fields: [pitchId], references: [id])
-  pitchId String
-  author  MediaAuthor @relation("TargetedMediaAuthor", fields: [mediaId, targetUserId, targetOrgId], references: [mediaId, userId, orgId])
-  mediaId  String
+  pitch        Pitch       @relation(fields: [pitchId], references: [id])
+  pitchId      String
+  author       MediaAuthor @relation("TargetedMediaAuthor", fields: [mediaId, targetUserId, targetOrgId], references: [mediaId, userId, orgId])
+  mediaId      String
   targetUserId String
-  targetOrgId String
+  targetOrgId  String
 
   @@id([pitchId, mediaId, targetUserId, targetOrgId])
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId(length: 191)])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId(length: 191)])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier(length: 191)])
+  @@map("verification")
 }
