@@ -10,24 +10,22 @@ const swaggerDocument = {
     version: "1.0.0",
   },
   servers: [{ url: "http://localhost:3000" }],
-
   paths: {
-    /** -------------------------
-     *  AUTH
-     *  ------------------------*/
+    // -------- AUTH --------
     "/auth/register": {
       post: {
         summary: "Register a new user",
-        description: "Creates a user account using email, username, and password.",
+        description:
+          "Creates a user account with a specific role (MANAGER or SONGWRITER).",
         requestBody: {
           required: true,
           content: {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["username", "email", "password"],
+                required: ["name", "email", "password", "role"],
                 properties: {
-                  username: {
+                  name: {
                     type: "string",
                     minLength: 3,
                     maxLength: 32,
@@ -35,31 +33,29 @@ const swaggerDocument = {
                   },
                   email: { type: "string", format: "email" },
                   password: { type: "string", minLength: 8 },
+                  role: {
+                    type: "string",
+                    enum: ["SONGWRITER", "MANAGER"],
+                    description:
+                      "Determines what the user can do in the app (permissions).",
+                  },
                 },
               },
             },
           },
         },
         responses: {
-          "201": {
-            description: "User successfully registered",
-          },
-          "400": {
-            description: "Invalid input (schema validation failed)",
-          },
-          "409": {
-            description: "Email or username already exists",
-          },
-          "500": {
-            description: "Server error",
-          },
+          "201": { description: "User successfully registered" },
+          "400": { description: "Invalid input (schema validation failed)" },
+          "409": { description: "Email or name already exists" },
+          "500": { description: "Server error" },
         },
       },
     },
 
     "/auth/login": {
       post: {
-        summary: "Login with email + password",
+        summary: "Login with email and password",
         requestBody: {
           required: true,
           content: {
@@ -77,45 +73,59 @@ const swaggerDocument = {
         },
         responses: {
           "200": { description: "Logged in successfully" },
-          "401": { description: "Invalid email or password" },
           "400": { description: "Invalid input" },
+          "401": { description: "Invalid email or password" },
         },
       },
     },
 
-    /** -------------------------
-     *  MEDIA
-     *  ------------------------*/
+    // -------- MEDIA --------
     "/media": {
       get: {
-        summary: "List current user's media",
+        summary: "List media for the current user / organisation",
         responses: {
-          "200": { description: "Media list" },
-          "401": { description: "Unauthorized (missing/inactive session)" },
+          "200": { description: "Media list returned" },
+          "401": { description: "Unauthorized" },
         },
       },
-
       post: {
-        summary: "Upload media file",
+        summary: "Upload media",
+        description:
+          "Uploads a media file (MP3/MP4) and associates it with an organisation.",
         requestBody: {
           required: true,
           content: {
             "multipart/form-data": {
               schema: {
                 type: "object",
-                required: ["file"],
+                required: ["file", "orgId"],
                 properties: {
-                  title: { type: "string" },
-                  orgId: { type: "string" },
-                  duration: { type: "string" },
-                  file: { type: "string", format: "binary" },
+                  title: {
+                    type: "string",
+                    description:
+                      "Optional title. If omitted, the original filename is used.",
+                  },
+                  orgId: {
+                    type: "string",
+                    description:
+                      "ID of the organisation the media belongs to.",
+                  },
+                  duration: {
+                    type: "string",
+                    description: "Duration as a string (e.g. '03:45').",
+                  },
+                  file: {
+                    type: "string",
+                    format: "binary",
+                    description: "The media file (audio/video).",
+                  },
                 },
               },
             },
           },
         },
         responses: {
-          "201": { description: "Media uploaded successfully" },
+          "201": { description: "Media created" },
           "400": { description: "Invalid input" },
           "401": { description: "Unauthorized" },
         },

@@ -26,12 +26,12 @@ model User {
   updatedAt              DateTime             @updatedAt
   sessions               Session[]
   accounts               Account[]
+  role                   OrganisationMemberRole @default(SONGWRITER)
 
   @@map("user")
 }
 
 // Organisation with links to members and related media 
-
 model Organisation {
   id        String               @id @default(cuid())
   name      String
@@ -41,13 +41,11 @@ model Organisation {
 }
 
 // Pivot table to determine the role of each org member
-
 model OrganisationMember {
   user         User                   @relation(fields: [userId], references: [id])
   userId       String
   organisation Organisation           @relation(fields: [orgId], references: [id])
   orgId        String
-  role         OrganisationMemberRole
   mediaAuthors MediaAuthor[]
   comments     Pitch[]                @relation("MemberComments")
 
@@ -55,7 +53,6 @@ model OrganisationMember {
 }
 
 // Pivot table to match a songwriter to the media they authored
-
 model MediaAuthor {
   media           Media               @relation(fields: [mediaId], references: [id])
   mediaId         String

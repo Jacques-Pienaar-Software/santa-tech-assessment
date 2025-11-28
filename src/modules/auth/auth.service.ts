@@ -6,7 +6,7 @@ import { RegisterInput } from "./auth.schemas";
 
 export class AuthService {
   async register(input: RegisterInput) {
-    const { name, email, password } = input;
+    const { name, email, password, role } = input;
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -40,7 +40,8 @@ export class AuthService {
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        name,
+        name: name,
+        role: role
       },
     });
 
