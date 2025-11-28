@@ -19,10 +19,22 @@ cd <REPO_FOLDER>
 cp .env.example .env
 ```
 
-2. **Start the docker engine**
+3. **Run NPM install**
+
+```bash
+npm install
+```
+
+4. **Start the docker engine**
 
 ```bash
 docker compose up --build
+```
+
+5. **[in another terminal] (optional) Run a prisma migration**
+
+```bash
+npx prisma migrate deploy
 ```
 
 ## API Endpoint Documentation
