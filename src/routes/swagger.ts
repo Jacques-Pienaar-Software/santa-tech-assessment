@@ -391,7 +391,7 @@ const swaggerDocument = {
         },
       },
     },
-    "/media/{mediaId}/pitches": {
+    "/pitch/{mediaId}/pitches": {
       post: {
         summary: "Create a pitch for a song (MANAGER only)",
         description:
@@ -465,6 +465,190 @@ const swaggerDocument = {
               "Caller must be a MANAGER and member of the organisation that owns the media",
           },
           "404": { description: "Media not found" },
+        },
+      },
+    },
+    "/pitch/pitches": {
+      get: {
+        summary: "Get pitches targeting the current user as an artist",
+        description:
+          "Returns all pitches where the current user is tagged as a target author (i.e. they are an artist on the song). Intended for SONGWRITER users, but any user will only see pitches that explicitly target them.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "List of pitches targeting the current user",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      description: { type: "string" },
+                      mediaId: { type: "string" },
+                      authorUserId: { type: "string" },
+                      authorOrgId: { type: "string" },
+                      media: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          title: { type: "string" },
+                          duration: { type: "string" },
+                          filePath: { type: "string" },
+                          orgId: { type: "string" },
+                          createdAt: { type: "string", format: "date-time" },
+                        },
+                      },
+                      tags: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string" },
+                            tagValue: { type: "string" },
+                          },
+                        },
+                      },
+                      targetAuthors: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            pitchId: { type: "string" },
+                            mediaId: { type: "string" },
+                            targetUserId: { type: "string" },
+                            targetOrgId: { type: "string" },
+                          },
+                        },
+                      },
+                      commentor: {
+                        type: "object",
+                        properties: {
+                          userId: { type: "string" },
+                          orgId: { type: "string" },
+                          user: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string" },
+                              name: { type: "string" },
+                              email: { type: "string", format: "email" },
+                              role: {
+                                type: "string",
+                                enum: ["SONGWRITER", "MANAGER"],
+                              },
+                            },
+                          },
+                          organisation: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string" },
+                              name: { type: "string" },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
+    "/pitch/pitches/{pitchId}": {
+      patch: {
+        summary: "Update a pitch (MANAGER only)",
+        description:
+          "Updates the description and/or tags of an existing pitch. The caller must be a MANAGER and a member of the organisation that owns the media for this pitch.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "pitchId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "ID of the pitch to update",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                description:
+                  "At least one of description or tags must be provided.",
+                properties: {
+                  description: {
+                    type: "string",
+                    description: "New description for the pitch.",
+                  },
+                  tags: {
+                    type: "array",
+                    description:
+                      "New full list of tags for the pitch. Replaces all existing tags.",
+                    items: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Pitch updated successfully" },
+          "400": {
+            description:
+              "Invalid input or neither description nor tags provided",
+          },
+          "401": { description: "Unauthorized" },
+          "403": {
+            description:
+              "Caller must be a MANAGER and member of the organisation that owns the media for this pitch",
+          },
+          "404": { description: "Pitch not found" },
+          "500": { description: "Server error" },
+        },
+      },
+    },
+    "/pitch/pitches/{pitchId}": {
+      delete: {
+        summary: "Delete a pitch (MANAGER only)",
+        description:
+          "Deletes an existing pitch, including its tags and target author relations. The caller must be a MANAGER and a member of the organisation that owns the media for this pitch.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "pitchId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "ID of the pitch to delete",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Pitch deleted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+          "403": {
+            description:
+              "Caller must be a MANAGER and member of the organisation that owns the media for this pitch",
+          },
+          "404": { description: "Pitch not found" },
+          "500": { description: "Server error" },
         },
       },
     },

@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { AuthedUser } from "../../middleware/authGuard";
 import { AppError } from "../../core/http/errors";
-import { CreatePitchInput } from "./pitch.schema";
+import { CreatePitchInput, UpdatePitchInput } from "./pitch.schema";
 
 export class PitchService {
   async createPitchForMedia(
@@ -76,6 +76,152 @@ export class PitchService {
     });
 
     return pitch;
+  }
+
+  async getPitchesForUserTargets(user: AuthedUser) {
+    const pitches = await prisma.pitch.findMany({
+      where: {
+        targetAuthors: {
+          some: {
+            targetUserId: user.id,
+          },
+        },
+      },
+      include: {
+        media: {
+          select: {
+            id: true,
+            title: true,
+            duration: true,
+            filePath: true,
+            orgId: true,
+            createdAt: true,
+          },
+        },
+        tags: true,
+        targetAuthors: true,
+        commentor: {
+          include: {
+            user: true,
+            organisation: true,
+          },
+        },
+      },
+    });
+
+    return pitches;
+  }
+  async updatePitch(
+    pitchId: string,
+    input: UpdatePitchInput,
+    user: AuthedUser
+  ) {
+    const existing = await prisma.pitch.findUnique({
+      where: { id: pitchId },
+      include: {
+        media: {
+          select: {
+            id: true,
+            orgId: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new AppError("Pitch not found", 404);
+    }
+
+    const membership = await prisma.organisationMember.findUnique({
+      where: {
+        userId_orgId: {
+          userId: user.id,
+          orgId: existing.media.orgId,
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new AppError(
+        "You are not a member of the organisation that owns this pitch",
+        403
+      );
+    }
+
+    const hasDescription = input.description !== undefined;
+    const hasTags = input.tags !== undefined;
+
+    const updated = await prisma.pitch.update({
+      where: { id: pitchId },
+      data: {
+        description: hasDescription ? input.description : undefined,
+        ...(hasTags && {
+          tags: {
+            deleteMany: {},
+            create: (input.tags ?? []).map((tagValue) => ({ tagValue })),
+          },
+        }),
+      },
+      include: {
+        tags: true,
+        targetAuthors: true,
+        media: true,
+      },
+    });
+
+    return updated;
+  }
+
+  async deletePitch(pitchId: string, user: AuthedUser) {
+    const existing = await prisma.pitch.findUnique({
+      where: { id: pitchId },
+      include: {
+        media: {
+          select: {
+            id: true,
+            orgId: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new AppError("Pitch not found", 404);
+    }
+
+    const membership = await prisma.organisationMember.findUnique({
+      where: {
+        userId_orgId: {
+          userId: user.id,
+          orgId: existing.media.orgId,
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new AppError(
+        "You are not a member of the organisation that owns this pitch",
+        403
+      );
+    }
+
+    await prisma.pitchTags.deleteMany({
+      where: {
+        pitchId,
+      },
+    });
+
+    await prisma.pitchTargetAuthor.deleteMany({
+      where: {
+        pitchId,
+      },
+    });
+
+    await prisma.pitch.delete({
+      where: { id: pitchId },
+    });
+
+    return { success: true };
   }
 }
 

@@ -16,3 +16,15 @@ export const createPitchSchema = z.object({
 });
 
 export type CreatePitchInput = z.infer<typeof createPitchSchema>;
+
+export const updatePitchSchema = z
+  .object({
+    description: z.string().min(1).optional(),
+    tags: z.array(z.string().min(1)).optional(),
+  })
+  .refine((data) => data.description !== undefined || data.tags !== undefined, {
+    message: "At least one of description or tags must be provided",
+    path: ["description"],
+  });
+
+export type UpdatePitchInput = z.infer<typeof updatePitchSchema>;

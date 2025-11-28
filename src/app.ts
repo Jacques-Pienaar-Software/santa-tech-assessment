@@ -7,6 +7,7 @@ import { mediaRouter } from "./routes/media";
 import { swaggerRouter } from "./routes/swagger";
 import { organisationRouter } from "./routes/organisation";
 import { profileRouter } from "./routes/user";
+import { pitchRouter } from "./routes/pitch";
 
 dotenv.config();
 
@@ -21,4 +22,6 @@ app.use("/media", mediaRouter);
 app.use("/docs", swaggerRouter);
 app.use("/organisations", organisationRouter);
 app.use("/profile", profileRouter);
+app.use("/pitch", pitchRouter);
+
 export { app };
