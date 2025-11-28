@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { registerSchema } from "../modules/auth/auth.schemas";
+import { loginSchema, registerSchema } from "../modules/auth/auth.schemas";
 import { authService } from "../modules/auth/auth.service";
 import { AppError } from "../core/http/errors";
 
@@ -13,7 +13,7 @@ authRouter.post(
       if (!parseResult.success) {
         return res.status(400).json({
           error: "Invalid input",
-          details: parseResult.error.flatten()
+          details: parseResult.error.flatten(),
         });
       }
 
@@ -27,16 +27,46 @@ authRouter.post(
 
       return res.status(201).json({
         description: "user created",
-        result
+        result,
       });
     } catch (err) {
-
       if (err instanceof AppError) {
         return res.status(err.statusCode).json({ error: err.message });
       }
 
       console.error("Unexpected registration error", err);
       return res.status(500).json({ error: "Failed to register user" });
+    }
+  }
+);
+
+authRouter.post(
+  "/login",
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid input",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const meta = {
+        headers: req.headers as Record<string, any>,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") ?? "",
+      };
+
+      const result = await authService.login(parsed.data);
+
+      return res.status(200).json(result);
+    } catch (err) {
+      if (err instanceof AppError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
+      console.error("Unexpected login error", err);
+      return res.status(500).json({ error: "Failed to login" });
     }
   }
 );

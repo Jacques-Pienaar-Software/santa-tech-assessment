@@ -1,8 +1,7 @@
 import { auth } from "../../core/auth/auth";
-import { ConflictError } from "../../core/http/errors";
+import { ConflictError, UnauthorizedError } from "../../core/http/errors";
 import { prisma } from "../../lib/prisma";
-import { RegisterInput } from "./auth.schemas";
-
+import { LoginInput, RegisterInput } from "./auth.schemas";
 
 export class AuthService {
   async register(input: RegisterInput) {
@@ -20,19 +19,17 @@ export class AuthService {
     });
 
     if (existingUser) {
-      const conflictField =
-        existingUser.email === email ? "email" : "name";
+      const conflictField = existingUser.email === email ? "email" : "name";
 
       throw new ConflictError(`${conflictField} already in use`);
     }
-
 
     const signUpResult = await auth.api.signUpEmail({
       body: {
         email,
         password,
-        name: name, 
-      }
+        name: name,
+      },
     });
 
     const userId = signUpResult.user.id;
@@ -41,7 +38,7 @@ export class AuthService {
       where: { id: userId },
       data: {
         name: name,
-        role: role
+        role: role,
       },
     });
 
@@ -51,6 +48,48 @@ export class AuthService {
         email: updatedUser.email,
         name: updatedUser.name,
       },
+    };
+  }
+
+  async login(input: LoginInput) {
+    const { email, password } = input;
+
+    const response = await auth.api.signInEmail({
+      body: { email, password },
+      asResponse: true,
+    });
+
+    if (!response.ok) {
+      let body: any = null;
+      body = await response.json();
+
+      throw new UnauthorizedError(body?.error ?? "Invalid email or password");
+    }
+
+    const token = response.headers.get("set-auth-token") || undefined;
+
+    const data = (await response.json()) as {
+      user: { id: string; email: string };
+      session: unknown;
+    };
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: data.user.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+    });
+
+    if (!dbUser) {
+      throw new UnauthorizedError("User not found");
+    }
+
+    return {
+      token,
+      user: dbUser,
     };
   }
 }
