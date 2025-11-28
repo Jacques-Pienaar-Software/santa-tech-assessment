@@ -558,7 +558,7 @@ const swaggerDocument = {
         },
       },
     },
-    "/pitch/pitches/{pitchId}": {
+    "/pitch/pitches/update/{pitchId}": {
       patch: {
         summary: "Update a pitch (MANAGER only)",
         description:
