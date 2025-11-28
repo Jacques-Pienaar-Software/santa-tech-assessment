@@ -391,6 +391,83 @@ const swaggerDocument = {
         },
       },
     },
+    "/media/{mediaId}/pitches": {
+      post: {
+        summary: "Create a pitch for a song (MANAGER only)",
+        description:
+          "Managers can add pitches to a song (media). The manager must belong to the organisation that owns the media. Pitches can include tags and optional target authors (MediaAuthors).",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "mediaId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+            description: "ID of the media (song) the pitch is for",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["description"],
+                properties: {
+                  description: {
+                    type: "string",
+                    description: "The manager's pitch / comment on the song.",
+                  },
+                  tags: {
+                    type: "array",
+                    description: "Optional list of tags for the pitch.",
+                    items: { type: "string" },
+                  },
+                  targetAuthors: {
+                    type: "array",
+                    description:
+                      "Optional list of target authors (MediaAuthors) this pitch is aimed at.",
+                    items: {
+                      type: "object",
+                      required: ["mediaId", "targetUserId", "targetOrgId"],
+                      properties: {
+                        mediaId: {
+                          type: "string",
+                          description:
+                            "Media ID of the author entry. Must match the mediaId in the path.",
+                        },
+                        targetUserId: {
+                          type: "string",
+                          description: "User ID of the target songwriter.",
+                        },
+                        targetOrgId: {
+                          type: "string",
+                          description:
+                            "Organisation ID of the target songwriter's membership.",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Pitch created" },
+          "400": {
+            description:
+              "Invalid input, media not found, or mismatched targetAuthors.mediaId",
+          },
+          "401": { description: "Unauthorized" },
+          "403": {
+            description:
+              "Caller must be a MANAGER and member of the organisation that owns the media",
+          },
+          "404": { description: "Media not found" },
+        },
+      },
+    },
   },
 };
 
