@@ -347,6 +347,50 @@ const swaggerDocument = {
         },
       },
     },
+    // ---------- PROFILE ----------
+    "/profile": {
+      get: {
+        summary: "Get current user profile",
+        description:
+          "Returns the current authenticated user's profile, including basic details and the organisations they belong to.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "Profile returned",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    name: { type: "string" },
+                    email: { type: "string", format: "email" },
+                    role: {
+                      type: "string",
+                      enum: ["SONGWRITER", "MANAGER"],
+                    },
+                    createdAt: { type: "string", format: "date-time" },
+                    organisations: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          name: { type: "string" },
+                          createdAt: { type: "string", format: "date-time" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "401": { description: "Unauthorized" },
+          "404": { description: "User not found" },
+        },
+      },
+    },
   },
 };
 

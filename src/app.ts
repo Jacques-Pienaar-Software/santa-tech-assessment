@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth";
 import { mediaRouter } from "./routes/media";
 import { swaggerRouter } from "./routes/swagger";
 import { organisationRouter } from "./routes/organisation";
+import { profileRouter } from "./routes/user";
 
 dotenv.config();
 
@@ -19,5 +20,5 @@ app.use("/auth", authRouter);
 app.use("/media", mediaRouter);
 app.use("/docs", swaggerRouter);
 app.use("/organisations", organisationRouter);
-
+app.use("/profile", profileRouter);
 export { app };
