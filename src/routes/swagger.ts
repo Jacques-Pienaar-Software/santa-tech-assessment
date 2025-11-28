@@ -10,8 +10,18 @@ const swaggerDocument = {
     version: "1.0.0",
   },
   servers: [{ url: "http://localhost:3000" }],
+
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+      },
+    },
+  },
+
   paths: {
-    // -------- AUTH --------
     "/auth/register": {
       post: {
         summary: "Register a new user",
@@ -23,9 +33,9 @@ const swaggerDocument = {
             "application/json": {
               schema: {
                 type: "object",
-                required: ["name", "email", "password", "role"],
+                required: ["username", "email", "password", "role"],
                 properties: {
-                  name: {
+                  username: {
                     type: "string",
                     minLength: 3,
                     maxLength: 32,
@@ -47,7 +57,7 @@ const swaggerDocument = {
         responses: {
           "201": { description: "User successfully registered" },
           "400": { description: "Invalid input (schema validation failed)" },
-          "409": { description: "Email or name already exists" },
+          "409": { description: "Email or username already exists" },
           "500": { description: "Server error" },
         },
       },
@@ -72,17 +82,19 @@ const swaggerDocument = {
           },
         },
         responses: {
-          "200": { description: "Logged in successfully" },
+          "200": {
+            description: "Logged in successfully (returns token + user)",
+          },
           "400": { description: "Invalid input" },
           "401": { description: "Invalid email or password" },
         },
       },
     },
 
-    // -------- MEDIA --------
     "/media": {
       get: {
         summary: "List media for the current user / organisation",
+        security: [{ bearerAuth: [] }],
         responses: {
           "200": { description: "Media list returned" },
           "401": { description: "Unauthorized" },
@@ -92,6 +104,7 @@ const swaggerDocument = {
         summary: "Upload media",
         description:
           "Uploads a media file (MP3/MP4) and associates it with an organisation.",
+        security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -107,8 +120,7 @@ const swaggerDocument = {
                   },
                   orgId: {
                     type: "string",
-                    description:
-                      "ID of the organisation the media belongs to.",
+                    description: "ID of the organisation the media belongs to.",
                   },
                   duration: {
                     type: "string",
@@ -131,9 +143,50 @@ const swaggerDocument = {
         },
       },
     },
+
+    "/organisations": {
+      post: {
+        summary: "Create an organisation (MANAGER only)",
+        description:
+          "Creates a new organisation and automatically adds the current MANAGER as a member.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name"],
+                properties: {
+                  name: {
+                    type: "string",
+                    minLength: 3,
+                    maxLength: 100,
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Organisation created" },
+          "400": { description: "Invalid input" },
+          "401": { description: "Unauthorized" },
+          "403": { description: "Managers only" },
+        },
+      },
+    },
   },
 };
 
-swaggerRouter.use("/", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+swaggerRouter.use(
+  "/",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  })
+);
 
 export { swaggerRouter };
