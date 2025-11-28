@@ -1,59 +1,52 @@
-import { Router } from "express";
-import path from "path";
-import { prisma } from "../lib/prisma";
-import { upload } from "../modules/media/upload";
-import { authGuard, AuthedRequest } from "../middleware/authGuard";
-import { CreateMediaRequest } from "./types/mediaRequests";
+import { Router, Response, NextFunction } from "express";
+import { AuthedRequest, authGuard } from "../middleware/authGuard";
+import { AppError } from "../core/http/errors";
+import { createMediaSchema } from "../modules/media/media.schemas";
+import { mediaService } from "../modules/media/media.service";
+import { mediaUpload } from "../modules/media/upload";
 
 export const mediaRouter = Router();
 
 mediaRouter.post(
   "/",
   authGuard,
-  upload.single("file"),
-  async (req: CreateMediaRequest, res) => {
-    //TODO: Extract metadata with util before creating media item
-    //TODO: Extract logic to a service method
+  mediaUpload.single("file"),
+  async (req: AuthedRequest, res: Response, next: NextFunction) => {
     try {
-      const file = req.file;
-      const { title, duration, orgId } = req.body;
+      const parsed = createMediaSchema.safeParse(req.body);
 
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      if (!orgId) {
+      if (!parsed.success) {
         return res.status(400).json({
-          error: "orgId is required to attach media to an organisation",
+          error: "Invalid input",
+          details: parsed.error.flatten(),
         });
       }
 
-      const media = await prisma.media.create({
-        data: {
-          title: title || file.originalname,
-          filePath: path.basename(file.path),
-          duration: duration,
-          orgId,
-        },
-      });
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
 
-      res.status(201).json(media);
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ error: "File is required under the 'file' field" });
+      }
+
+      const relativePath = `uploads/media/${req.file.filename}`;
+
+      const media = await mediaService.createMediaForOrg(
+        parsed.data,
+        req.user,
+        relativePath
+      );
+
+      return res.status(201).json(media);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to upload media" });
+      if (err instanceof AppError) {
+        return res.status(err.statusCode).json({ error: err.message });
+      }
+      console.error("Create media error", err);
+      return res.status(500).json({ error: "Failed to upload media" });
     }
   }
 );
-
-mediaRouter.get("/", authGuard, async (req: AuthedRequest, res) => {
-  const { orgId } = req.query;
-
-  if (!orgId) {
-    return res.status(400).json({ error: "orgId query parameter is required" });
-  }
-
-  const media = await prisma.media.findMany({
-    where: { orgId: String(orgId) },
-  });
-  res.json(media);
-});

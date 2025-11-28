@@ -14,6 +14,22 @@ CREATE TABLE `user` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `OrganisationInvite` (
+    `id` VARCHAR(191) NOT NULL,
+    `orgId` VARCHAR(191) NOT NULL,
+    `inviterId` VARCHAR(191) NOT NULL,
+    `inviteeId` VARCHAR(191) NOT NULL,
+    `role` ENUM('SONGWRITER', 'MANAGER') NOT NULL DEFAULT 'SONGWRITER',
+    `status` ENUM('PENDING', 'ACCEPT', 'REJECT') NOT NULL DEFAULT 'PENDING',
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `respondedAt` DATETIME(3) NULL,
+
+    INDEX `OrganisationInvite_inviteeId_idx`(`inviteeId`),
+    INDEX `OrganisationInvite_orgId_idx`(`orgId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Organisation` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
@@ -129,6 +145,15 @@ CREATE TABLE `verification` (
     INDEX `verification_identifier_idx`(`identifier`(191)),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `OrganisationInvite` ADD CONSTRAINT `OrganisationInvite_orgId_fkey` FOREIGN KEY (`orgId`) REFERENCES `Organisation`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `OrganisationInvite` ADD CONSTRAINT `OrganisationInvite_inviterId_fkey` FOREIGN KEY (`inviterId`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `OrganisationInvite` ADD CONSTRAINT `OrganisationInvite_inviteeId_fkey` FOREIGN KEY (`inviteeId`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `OrganisationMember` ADD CONSTRAINT `OrganisationMember_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

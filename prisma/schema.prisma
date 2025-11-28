@@ -1,7 +1,6 @@
-
 datasource db {
   provider = "mysql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -13,41 +12,67 @@ enum OrganisationMemberRole {
   MANAGER
 }
 
+enum OrganisationInviteStatus {
+  PENDING
+  ACCEPT
+  REJECT
+}
+
 // Better auth compatible User table
 
 model User {
-  id                     String               @id @default(cuid())
-  email                  String               @unique
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
   organisationMembership OrganisationMember[]
-  name                   String               @db.Text
-  emailVerified          Boolean              @default(false)
-  image                  String?              @db.Text
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  name                   String                 @db.Text
+  emailVerified          Boolean                @default(false)
+  image                  String?                @db.Text
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
   sessions               Session[]
   accounts               Account[]
   role                   OrganisationMemberRole @default(SONGWRITER)
+  invitesSent            OrganisationInvite[]   @relation("OrganisationInvitesSent")
+  invitesReceived        OrganisationInvite[]   @relation("OrganisationInvitesReceived")
 
   @@map("user")
 }
 
+model OrganisationInvite {
+  id          String                   @id @default(cuid())
+  org         Organisation             @relation(fields: [orgId], references: [id])
+  orgId       String
+  inviter     User                     @relation("OrganisationInvitesSent", fields: [inviterId], references: [id])
+  inviterId   String
+  invitee     User                     @relation("OrganisationInvitesReceived", fields: [inviteeId], references: [id])
+  inviteeId   String
+  role        OrganisationMemberRole   @default(SONGWRITER)
+  status      OrganisationInviteStatus @default(PENDING)
+  createdAt   DateTime                 @default(now())
+  respondedAt DateTime?
+
+  @@index([inviteeId])
+  @@index([orgId])
+}
+
 // Organisation with links to members and related media 
 model Organisation {
-  id        String               @id @default(cuid())
-  name      String
-  createdAt DateTime             @default(now())
-  members   OrganisationMember[]
-  media     Media[]
+  id                  String               @id @default(cuid())
+  name                String
+  createdAt           DateTime             @default(now())
+  members             OrganisationMember[]
+  media               Media[]
+  organisationInvites OrganisationInvite[]
 }
 
 // Pivot table to determine the role of each org member
 model OrganisationMember {
-  user         User                   @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
   userId       String
-  organisation Organisation           @relation(fields: [orgId], references: [id])
+  organisation Organisation  @relation(fields: [orgId], references: [id])
   orgId        String
   mediaAuthors MediaAuthor[]
-  comments     Pitch[]                @relation("MemberComments")
+  comments     Pitch[]       @relation("MemberComments")
 
   @@id([userId, orgId])
 }
